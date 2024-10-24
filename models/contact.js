@@ -1,4 +1,3 @@
-const { Pool } = require('pg');
 const pool = require('../utils/db');
 
 // Contact Model
@@ -19,4 +18,46 @@ async function getContacts(userId, filters, sort) {
   return pool.query(query, [userId]);
 }
 
-module.exports = { addContact, getContacts };
+async function updateContact(contactData) {
+  const { name, email, phone, address, timezone, id } = contactData;
+  let query = 'SELECT * FROM contacts WHERE user_id = $1 AND deleted_at IS NULL';
+  if (name) query += ` AND name ILIKE '%${name}%'`;
+  if (email) query += ` AND email ILIKE '%${email}%'`;
+  query += ` ORDER BY ${'created_at DESC'}`;
+
+  const existingContact = pool.query(query, [id]);
+  if (existingContact.rowCount === 0) {
+    return existingContact;
+  }
+
+  return pool.query(
+    `UPDATE contacts 
+     SET name = $1, email = $2, phone = $3, address = $4, timezone = $5, updated_at = NOW() 
+     WHERE id = $6 RETURNING *`,
+    [name, email, phone, address, timezone, id]
+  );
+}
+
+async function deleteContact(contactData) {
+  const { name, email, id } = contactData;
+  let query = 'SELECT * FROM contacts WHERE user_id = $1 AND deleted_at IS NULL';
+  if (name) query += ` AND name ILIKE '%${name}%'`;
+  if (email) query += ` AND email ILIKE '%${email}%'`;
+  query += ` ORDER BY ${'created_at DESC'}`;
+
+  const existingContact = pool.query(query, [id]);
+  if (existingContact.rowCount === 0) {
+    return existingContact;
+  }
+
+  return await pool.query(
+    `UPDATE contacts 
+     SET deleted_at = NOW() 
+     WHERE id = $1 AND deleted_at IS NULL 
+     RETURNING *`,
+    [id]
+  );
+}
+
+module.exports = { addContact, getContacts, updateContact, deleteContact };
+

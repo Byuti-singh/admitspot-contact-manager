@@ -6,8 +6,6 @@ export default async function handler(req, res) {
   const { token } = req.query;
 
   try {
-    console.log(token);
-    console.log(process.env.JWT_SECRET);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await findUserByEmail(decoded.id);
     if (!user) return res.status(400).json({ message: 'Invalid token.' });
